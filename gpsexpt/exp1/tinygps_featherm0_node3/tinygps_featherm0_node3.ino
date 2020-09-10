@@ -222,6 +222,14 @@ if (Serial1.available() > 0)
       // we received an acknowledgement from the next hop for the node we tried to send to.
       RHRouter::RoutingTableEntry *route = manager->getRouteTo(n);
       if (route->next_hop != 0) {
+        Serial.print("next hop:");
+        Serial.println(route->next_hop);
+        for (int i=0;i<route->next_hop;i++) { // blink corresponding to which node we hopped to
+          digitalWrite(LED, HIGH);   // turn the LED on (HIGH is the voltage level)
+          delay(100);                       // wait for a second
+          digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
+          delay(100); 
+        }
         rssi[route->next_hop-1] = rf95.lastRssi();
       }
     }
