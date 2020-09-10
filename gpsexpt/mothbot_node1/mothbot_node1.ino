@@ -4,29 +4,18 @@
 #include <RHMesh.h>
 #include <RH_RF95.h>
 #define RH_HAVE_SERIAL
-#define LED 13
+#define LED 5
 #define N_NODES 3
 
-#include <TinyGPS++.h> //https://github.com/mikalhart/TinyGPSPlus
-
-// board manager for adafruit: https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
-
-int targetNode = 1;
-
-
-static const uint32_t GPSBaud = 9600;
-TinyGPSPlus gps;
-
-int delaySec = 3; 
-uint8_t nodeId = 3; // change this for each node
+uint8_t nodeId = 1; // change this for each node
 
 uint8_t routes[N_NODES]; // full routing table for mesh
 int16_t rssi[N_NODES]; // signal strength info
 
-// for feather m0  
+// for mothbot
 #define RFM95_CS 8
-#define RFM95_RST 4
-#define RFM95_INT 3
+#define RFM95_RST 7
+#define RFM95_INT 2
 
 // Singleton instance of the radio driver
 //RH_RF95 rf95;
@@ -39,17 +28,14 @@ RHMesh *manager;
 // message buffer
 char buf[RH_MESH_MAX_MESSAGE_LEN];
 
-double last_lon=0.;
-double last_lat=0.;
 
 void setup() {
   randomSeed(analogRead(0));
   pinMode(LED, OUTPUT);
-  Serial.begin(115200);
+  Serial.begin(9600);
   //while (!Serial) ; // Wait for serial port to be available
 
-    Serial1.begin(GPSBaud);
-
+  
   
   if (nodeId > 10) {
     Serial.print(F("EEPROM nodeId invalid: "));
@@ -149,15 +135,6 @@ void getRouteInfoString(char *p, size_t len) {
   strcat(p, "]");
 }
 
-void getGPSInfoString(char *p, size_t len) {
-
-String lon_value = String(last_lon,6);
-String lat_value = String(last_lat,6);
-
-sprintf(p, "[%s,%s]",lat_value.c_str(),lon_value.c_str());
-
-}
-
 void printNodeInfo(uint8_t node, char *s) {
   Serial.print(F("node: "));
   Serial.print(F("{"));
@@ -169,43 +146,14 @@ void printNodeInfo(uint8_t node, char *s) {
   Serial.println(F("}"));
 }
 
-int gpsreadcount=0;
 void loop() {
 
-int n = targetNode;
+  for(uint8_t n=1;n<=N_NODES;n++) {
+    if (n == nodeId) continue; // self
 
-if (Serial1.available() > 0)
-  {
-    gps.encode(Serial1.read());
-    if (gps.location.isValid())
-    {
-      last_lon=double(gps.location.lng());
-      last_lat=double(gps.location.lat());
-    } 
-    gpsreadcount++;
-  }
- else {
-  
-  Serial.print('gpsreadcount=');
-  Serial.println(gpsreadcount);
-  gpsreadcount=0;
+    updateRoutingTable();
+    getRouteInfoString(buf, RH_MESH_MAX_MESSAGE_LEN);
 
-  // grab last location values and send over radio
-  Serial.print(F("(lat,lon): "));
-  Serial.print(last_lat,6);
-  Serial.print(F(","));
-  Serial.println(last_lon,6);
-
-
- 
-      updateRoutingTable();
-
-
-
-
-
-    //send GPS
-    getGPSInfoString(buf, RH_MESH_MAX_MESSAGE_LEN);
     Serial.print(F("->"));
     Serial.print(n);
     Serial.print(F(" :"));
@@ -218,6 +166,10 @@ if (Serial1.available() > 0)
       Serial.print(F(" ! "));
       Serial.println(getErrorString(error));
     } else {
+      digitalWrite(LED, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(100);                       // wait for a second
+  digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
+  delay(100);    
       Serial.println(F(" OK"));
       // we received an acknowledgement from the next hop for the node we tried to send to.
       RHRouter::RoutingTableEntry *route = manager->getRouteTo(n);
@@ -225,8 +177,29 @@ if (Serial1.available() > 0)
         rssi[route->next_hop-1] = rf95.lastRssi();
       }
     }
+    if (nodeId == 1) printNodeInfo(nodeId, buf); // debugging
 
-  
-  delay(delaySec*1000);
- }
+    // listen for incoming messages. Wait a random amount of time before we transmit
+    // again to the next node
+    unsigned long nextTransmit = millis() + random(3000, 5000);
+    while (nextTransmit > millis()) {
+      int waitTime = nextTransmit - millis();
+      uint8_t len = sizeof(buf);
+      uint8_t from;
+      if (manager->recvfromAckTimeout((uint8_t *)buf, &len, waitTime, &from)) {
+        buf[len] = '\0'; // null terminate string
+        Serial.print(from);
+        Serial.print(F("->"));
+        Serial.print(F(" :"));
+        Serial.println(buf);
+        if (nodeId == 1) printNodeInfo(from, buf); // debugging
+        // we received data from node 'from', but it may have actually come from an intermediate node
+        RHRouter::RoutingTableEntry *route = manager->getRouteTo(from);
+        if (route->next_hop != 0) {
+          rssi[route->next_hop-1] = rf95.lastRssi();
+        }
+      }
+    }
+  }
+
 }
