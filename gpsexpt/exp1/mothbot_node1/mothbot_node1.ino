@@ -161,6 +161,10 @@ unsigned long nextTransmit = millis() + random(3000, 5000);
       uint8_t len = sizeof(buf);
       uint8_t from;
       if (manager->recvfromAckTimeout((uint8_t *)buf, &len, waitTime, &from)) {
+         digitalWrite(LED, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(100);                       // wait for a second
+  digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
+  delay(100); 
         buf[len] = '\0'; // null terminate string
         //Serial.print(from);
         //Serial.print(F("->"));
