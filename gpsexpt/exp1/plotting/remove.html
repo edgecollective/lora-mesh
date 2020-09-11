@@ -114,11 +114,30 @@ id: 'mapbox/streets-v11'
 
 L.control.scale().addTo(mymap);
 
-var q = L.circle([latitude[0], longitude[0]], 5, {
+var mid = Math.floor(xvals.length/2);
+console.log(mid);
+
+var r = L.circle([latitude[0], longitude[0]], 7, {
+  color: 'red',
+  fillColor: 'red', 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+var q = L.circle([latitude[mid], longitude[mid]], 7, {
+  color: 'green',
+  fillColor: 'green', 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+
+
+/*
+  var r = L.circle([latitude[midi], longitude[midi]], 7, {
   color: 'blue',
   fillColor: 'blue', 
   fillOpacity: .31
   }).addTo(mymap);
+*/
 
 function timer(ms) {
  return new Promise(res => setTimeout(res, ms));
@@ -134,12 +153,13 @@ var signal = parseInt(rssi[i]);
 var node = parseInt(route[i]);
 var fillcol = 'green';
 
-console.log(signal);
+//console.log(signal);
 
 fillcol='red';
-
+pointAindex=0;
 if(node==2) {
   fillcol='green';
+  pointAindex=mid;
 }
 
 var myColor = 'green';
@@ -152,14 +172,16 @@ var layer = L.circle([lat, lon], 2, {
   }).addTo(map);
   */
 
- 
+ // residue
+ /*
  L.circle([lat, lon], 2, {
   color: fillcol,
   fillColor: fillcol, 
   fillOpacity: .1
   }).addTo(mymap);
+*/
 
-var p = L.circle([lat, lon], 5, {
+var p = L.circle([lat, lon], 7, {
   color: fillcol,
   fillColor: fillcol, 
   fillOpacity: .31
@@ -167,7 +189,7 @@ var p = L.circle([lat, lon], 5, {
 
   
 
-var pointA = new L.LatLng(latitude[0], longitude[0]);
+var pointA = new L.LatLng(latitude[pointAindex], longitude[pointAindex]);
 var pointB = new L.LatLng(lat, lon);
 var pointList = [pointA, pointB];
 
