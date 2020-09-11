@@ -114,6 +114,12 @@ id: 'mapbox/streets-v11'
 
 L.control.scale().addTo(mymap);
 
+var q = L.circle([latitude[0], longitude[0]], 5, {
+  color: 'blue',
+  fillColor: 'blue', 
+  fillOpacity: .31
+  }).addTo(mymap);
+
 function timer(ms) {
  return new Promise(res => setTimeout(res, ms));
 }
@@ -146,16 +152,40 @@ var layer = L.circle([lat, lon], 2, {
   }).addTo(map);
   */
 
-var p = L.circle([lat, lon], 2, {
+ 
+ L.circle([lat, lon], 2, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .1
+  }).addTo(mymap);
+
+var p = L.circle([lat, lon], 5, {
   color: fillcol,
   fillColor: fillcol, 
   fillOpacity: .31
   }).addTo(mymap);
 
+  
+
+var pointA = new L.LatLng(latitude[0], longitude[0]);
+var pointB = new L.LatLng(lat, lon);
+var pointList = [pointA, pointB];
+
+var track = new L.Polyline(pointList, {
+    color: fillcol,
+    weight: 3,
+    opacity: 0.5,
+    smoothFactor: 1
+});
+
+track.addTo(mymap);
+
 
 await timer(50);
 
 p.remove();
+track.remove();
+
 }
 
 }
