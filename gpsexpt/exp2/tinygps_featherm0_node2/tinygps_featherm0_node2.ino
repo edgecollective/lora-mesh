@@ -156,7 +156,12 @@ String lat_value = String(last_lat,6);
 
 sprintf(p, "[%s,%s];[",lat_value.c_str(),lon_value.c_str());
 for(uint8_t n=1;n<=N_NODES;n++) {
+   strcat(p, "{\"n\":");
     sprintf(p+strlen(p), "%d", routes[n-1]);
+    strcat(p, ",");
+    strcat(p, "\"r\":");
+    sprintf(p+strlen(p), "%d", rssi[n-1]);
+    strcat(p, "}");
      if (n<N_NODES) {
       strcat(p, ",");
     }
