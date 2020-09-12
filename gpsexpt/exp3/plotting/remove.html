@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+  <head>
+	
+    <title>Turtle Tracking</title>
+  
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="shortcut icon" type="image/x-icon" href="./turtle_l.png" />
+  
+      <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+  
+  
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+      <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js" integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew==" crossorigin=""></script>
+  
+  
+    
+  </head>
+<body>
+
+
+  
+	<script>
+
+function readTextFile(file, callback) {
+    var rawFile = new XMLHttpRequest();
+    rawFile.overrideMimeType("application/json");
+    rawFile.open("GET", file, true);
+    rawFile.onreadystatechange = function() {
+        if (rawFile.readyState === 4 && rawFile.status == "200") {
+            callback(rawFile.responseText);
+        }
+    }
+    rawFile.send(null);
+}
+
+
+function connectTheDots(data){
+  var c = [];
+  for(i in data) {
+      var x = data[i].latitude;
+      var y = data[i].longitude;
+      if (x>0) {
+      c.push([x, y]);
+      }
+  }
+  return c;
+}
+
+//usage:
+readTextFile("./data.json", function(text){
+    var data = JSON.parse(text);
+    console.log(data);
+
+
+
+//console.log(data[0]);
+
+var timestamp = [];
+var latitude = [];
+var longitude = [];
+var altitude = [];
+var temperature = [];
+var xvals = [];
+var deviceName = [];
+var rssi = [];
+var route = [];
+var node = [];
+
+//	  console.log(data);
+// get the data
+for (i in data) {
+
+//if( (i%1==0) && (i<300) ){
+console.log(i);
+xvals.push(i);
+node.push(data[i].node);
+latitude.push(data[i].lat);
+longitude.push(data[i].lon);
+rssi.push(data[i].lastrssi);
+route.push(data[i].lastroute);
+/*
+xvals.push(data[i].id);
+timestamp.push(data[i].timestamp);
+latitude.push(data[i].latitude);
+longitude.push(data[i].longitude);
+altitude.push(data[i].altitude);
+temperature.push(data[i].temperature);
+deviceName.push(data[i].deviceName);
+rssi.push(data[i].rssi);
+*/
+//console.log(me);
+//}
+}
+
+// chose the base station gps coords to be the location of the first data received from either node (likely true)
+baselat=latitude[0];
+baselon=longitude[0];
+
+
+var mymap = L.map('mapid').setView([41.709121,-70.204809], 17);
+
+
+L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+maxZoom: 18,
+attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+  '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+  'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+id: 'mapbox/streets-v11'
+}).addTo(mymap);
+
+//var pathCoords = connectTheDots(data);
+//console.log(pathCoords);
+
+//var pathLine = L.polyline(pathCoords).addTo(mymap);
+
+//var maxCount = 100
+
+L.control.scale().addTo(mymap);
+
+var r = L.circle([latitude[0], longitude[0]], 7, {
+  color: 'red',
+  fillColor: 'red', 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+/*
+var q = L.circle([latitude[mid], longitude[mid]], 7, {
+  color: 'green',
+  fillColor: 'green', 
+  fillOpacity: .31
+  }).addTo(mymap);
+*/
+
+/*
+  var r = L.circle([latitude[midi], longitude[midi]], 7, {
+  color: 'blue',
+  fillColor: 'blue', 
+  fillOpacity: .31
+  }).addTo(mymap);
+*/
+
+function timer(ms) {
+ return new Promise(res => setTimeout(res, ms));
+}
+
+async function load() {
+
+var last1lat=baselat;
+var last1lon=baselon;
+var last2lat=baselat;
+var last3lat=baselat;
+var last2lon=baselon;
+var last2lon=baselon;
+
+var last2marker = L.circle([baselat, baselon], 7, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+var last3marker = L.circle([baselat, baselon], 7, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+  var last3track;
+  var last2track;
+
+var pointA = new L.LatLng(baselat, baselon);
+var pointB = new L.LatLng(baselat, baselon);
+
+var pointList = [pointA, pointB];
+
+last2track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'black',
+    weight: 4,
+    opacity: 0.5,
+    smoothFactor: 1
+});
+
+last2track.addTo(mymap);
+
+last3track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'black',
+    weight: 4,
+    opacity: 0.5,
+    smoothFactor: 1
+});
+
+last3track.addTo(mymap);
+
+
+for (var i=0;i<xvals.length;i++) {
+
+var lat = latitude[i];
+var lon = longitude[i];
+var signal = parseInt(rssi[i]);
+var relaynode = parseInt(route[i]);
+var fillcol = 'green';
+var thisnode = parseInt(node[i])
+
+console.log('got here',i);
+
+//console.log(signal);
+
+fillcol='black';
+
+if(thisnode==2) {
+fillcol='red';
+last2lat=lat;
+last2lon=lon;
+
+last2marker.remove();
+
+last2marker = L.circle([lat, lon], 7, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+pointA = new L.LatLng(lat, lon);
+
+if(relaynode==1) {
+var pointB = new L.LatLng(last1lat, last1lon);
+}
+if(relaynode==2) {
+var pointB = new L.LatLng(last2lat, last2lon);
+}
+if(relaynode==3) {
+var pointB = new L.LatLng(last3lat, last3lon);
+}
+
+var pointList = [pointA, pointB];
+
+last2track.remove();
+
+last2track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'black',
+    weight: 4,
+    opacity: 0.5,
+    smoothFactor: 1
+});
+
+last2track.addTo(mymap);
+
+}
+if(thisnode==3) {
+  fillcol='green'
+  last3lat=lat;
+  last3lon=lon;
+
+  last3marker.remove();
+
+last3marker = L.circle([lat, lon], 7, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+  pointA = new L.LatLng(lat, lon);
+
+if(relaynode==1) {
+var pointB = new L.LatLng(last1lat, last1lon);
+}
+if(relaynode==2) {
+var pointB = new L.LatLng(last2lat, last2lon);
+}
+if(relaynode==3) {
+var pointB = new L.LatLng(last3lat, last3lon);
+}
+
+var pointList = [pointA, pointB];
+
+last3track.remove();
+
+last3track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'black',
+    weight: 4,
+    opacity: 0.5,
+    smoothFactor: 1
+});
+
+last3track.addTo(mymap);
+
+}
+
+
+//var myColor = 'green';
+
+/*
+var layer = L.circle([lat, lon], 2, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .31
+  }).addTo(map);
+  */
+
+ // residue
+ /*
+ L.circle([lat, lon], 2, {
+  color: 'gray',
+  fillColor: 'gray', 
+  fillOpacity: .1
+  }).addTo(mymap);
+*/
+
+
+  
+
+var pointA = new L.LatLng(lat, lon);
+var pointB = new L.LatLng(lat, lon);
+
+if(relaynode==1) {
+var pointB = new L.LatLng(last1lat, last1lon);
+}
+if(relaynode==2) {
+var pointB = new L.LatLng(last2lat, last2lon);
+}
+if(relaynode==3) {
+var pointB = new L.LatLng(last3lat, last3lon);
+}
+
+var pointList = [pointA, pointB];
+
+var track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'black',
+    weight: 4,
+    opacity: 0.5,
+    smoothFactor: 1
+});
+
+track.addTo(mymap);
+
+
+await timer(50);
+
+//p.remove();
+track.remove();
+
+}
+
+}
+
+
+load();
+
+}
+
+);
+
+	</script>
+
+
+<div id="mapid" style="width: 100%; height: 600px;"></div>
+
+</body>
+</html>
