@@ -56,8 +56,7 @@ readTextFile("./data.json", function(text){
 
 
 
-//console.log(data[0]);
-
+var animationTimestep = 100; // in milliseconds
 var timestamp = [];
 var latitude = [];
 var longitude = [];
@@ -96,11 +95,17 @@ rssi.push(data[i].rssi);
 }
 
 // chose the base station gps coords to be the location of the first data received from either node (likely true)
-baselat=latitude[0];
-baselon=longitude[0];
+//baselat=latitude[0];
+//baselon=longitude[0];
 
+baselat=42.375775;
+baselon=-71.098724;
 
-var mymap = L.map('mapid').setView([41.709121,-70.204809], 17);
+// yarmouth
+//var mymap = L.map('mapid').setView([41.709121,-70.204809], 17);
+
+//somerville
+var mymap = L.map('mapid').setView([42.375775,-71.098724], 17);
 
 
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
@@ -120,10 +125,12 @@ id: 'mapbox/streets-v11'
 
 L.control.scale().addTo(mymap);
 
-var r = L.circle([latitude[0], longitude[0]], 7, {
-  color: 'red',
-  fillColor: 'red', 
-  fillOpacity: .31
+// base station node
+
+var r = L.circle([baselat, baselon],15, {
+  color: 'blue',
+  fillColor: 'blue', 
+  fillOpacity: .1
   }).addTo(mymap);
 
 /*
@@ -177,9 +184,9 @@ var pointList = [pointA, pointB];
 
 last2track = new L.Polyline(pointList, {
     //color: fillcol,
-    color: 'black',
+    color: 'red',
     weight: 4,
-    opacity: 0.5,
+    opacity: 1.,
     smoothFactor: 1
 });
 
@@ -187,9 +194,9 @@ last2track.addTo(mymap);
 
 last3track = new L.Polyline(pointList, {
     //color: fillcol,
-    color: 'black',
+    color: 'green',
     weight: 4,
-    opacity: 0.5,
+    opacity: 1.,
     smoothFactor: 1
 });
 
@@ -220,7 +227,7 @@ last2marker.remove();
 
 last2marker = L.circle([lat, lon], 7, {
   color: fillcol,
-  fillColor: fillcol, 
+  fillColor: 'red', 
   fillOpacity: .31
   }).addTo(mymap);
 
@@ -242,9 +249,9 @@ last2track.remove();
 
 last2track = new L.Polyline(pointList, {
     //color: fillcol,
-    color: 'black',
+    color: 'red',
     weight: 4,
-    opacity: 0.5,
+    opacity: 1.,
     smoothFactor: 1
 });
 
@@ -282,9 +289,9 @@ last3track.remove();
 
 last3track = new L.Polyline(pointList, {
     //color: fillcol,
-    color: 'black',
+    color: 'green',
     weight: 4,
-    opacity: 0.5,
+    opacity: 1.,
     smoothFactor: 1
 });
 
@@ -292,59 +299,8 @@ last3track.addTo(mymap);
 
 }
 
+await timer(animationTimestep);
 
-//var myColor = 'green';
-
-/*
-var layer = L.circle([lat, lon], 2, {
-  color: fillcol,
-  fillColor: fillcol, 
-  fillOpacity: .31
-  }).addTo(map);
-  */
-
- // residue
- /*
- L.circle([lat, lon], 2, {
-  color: 'gray',
-  fillColor: 'gray', 
-  fillOpacity: .1
-  }).addTo(mymap);
-*/
-
-
-  
-
-var pointA = new L.LatLng(lat, lon);
-var pointB = new L.LatLng(lat, lon);
-
-if(relaynode==1) {
-var pointB = new L.LatLng(last1lat, last1lon);
-}
-if(relaynode==2) {
-var pointB = new L.LatLng(last2lat, last2lon);
-}
-if(relaynode==3) {
-var pointB = new L.LatLng(last3lat, last3lon);
-}
-
-var pointList = [pointA, pointB];
-
-var track = new L.Polyline(pointList, {
-    //color: fillcol,
-    color: 'black',
-    weight: 4,
-    opacity: 0.5,
-    smoothFactor: 1
-});
-
-track.addTo(mymap);
-
-
-await timer(50);
-
-//p.remove();
-track.remove();
 
 }
 
