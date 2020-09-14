@@ -56,7 +56,7 @@ readTextFile("./data.json", function(text){
 
 
 
-var animationTimestep = 100; // in milliseconds
+var animationTimestep = 30; // in milliseconds
 var timestamp = [];
 var latitude = [];
 var longitude = [];
@@ -98,14 +98,20 @@ rssi.push(data[i].rssi);
 //baselat=latitude[0];
 //baselon=longitude[0];
 
-baselat=42.375775;
-baselon=-71.098724;
+
 
 // yarmouth
 //var mymap = L.map('mapid').setView([41.709121,-70.204809], 17);
 
-//somerville
-var mymap = L.map('mapid').setView([42.375775,-71.098724], 17);
+//somervile
+//baselat=42.375775;
+//baselon=-71.098724;
+
+//lincoln
+baselat=42.424576;
+baselon=-71.290532;
+
+var mymap = L.map('mapid').setView([baselat,baselon], 15.2);
 
 
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
