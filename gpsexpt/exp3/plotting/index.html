@@ -56,8 +56,7 @@ readTextFile("./data.json", function(text){
 
 
 
-//console.log(data[0]);
-
+var animationTimestep = 100; // in milliseconds
 var timestamp = [];
 var latitude = [];
 var longitude = [];
@@ -67,14 +66,16 @@ var xvals = [];
 var deviceName = [];
 var rssi = [];
 var route = [];
+var node = [];
 
 //	  console.log(data);
 // get the data
 for (i in data) {
 
-if( (i%1==0) && (i<300) ){
+//if( (i%1==0) && (i<300) ){
 console.log(i);
 xvals.push(i);
+node.push(data[i].node);
 latitude.push(data[i].lat);
 longitude.push(data[i].lon);
 rssi.push(data[i].lastrssi);
@@ -90,11 +91,21 @@ deviceName.push(data[i].deviceName);
 rssi.push(data[i].rssi);
 */
 //console.log(me);
-}
+//}
 }
 
+// chose the base station gps coords to be the location of the first data received from either node (likely true)
+//baselat=latitude[0];
+//baselon=longitude[0];
 
-var mymap = L.map('mapid').setView([41.709121,-70.204809], 17);
+baselat=42.375775;
+baselon=-71.098724;
+
+// yarmouth
+//var mymap = L.map('mapid').setView([41.709121,-70.204809], 17);
+
+//somerville
+var mymap = L.map('mapid').setView([42.375775,-71.098724], 17);
 
 
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
@@ -112,88 +123,195 @@ id: 'mapbox/streets-v11'
 
 //var maxCount = 100
 
-for (var i = 0; i < xvals.length; i++) {
+L.control.scale().addTo(mymap);
+
+// base station node
+
+var r = L.circle([baselat, baselon],15, {
+  color: 'blue',
+  fillColor: 'blue', 
+  fillOpacity: .1
+  }).addTo(mymap);
+
+/*
+var q = L.circle([latitude[mid], longitude[mid]], 7, {
+  color: 'green',
+  fillColor: 'green', 
+  fillOpacity: .31
+  }).addTo(mymap);
+*/
+
+/*
+  var r = L.circle([latitude[midi], longitude[midi]], 7, {
+  color: 'blue',
+  fillColor: 'blue', 
+  fillOpacity: .31
+  }).addTo(mymap);
+*/
+
+function timer(ms) {
+ return new Promise(res => setTimeout(res, ms));
+}
+
+async function load() {
+
+var last1lat=baselat;
+var last1lon=baselon;
+var last2lat=baselat;
+var last3lat=baselat;
+var last2lon=baselon;
+var last2lon=baselon;
+
+var last2marker = L.circle([baselat, baselon], 7, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+var last3marker = L.circle([baselat, baselon], 7, {
+  color: fillcol,
+  fillColor: fillcol, 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+  var last3track;
+  var last2track;
+
+var pointA = new L.LatLng(baselat, baselon);
+var pointB = new L.LatLng(baselat, baselon);
+
+var pointList = [pointA, pointB];
+
+last2track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'red',
+    weight: 4,
+    opacity: 1.,
+    smoothFactor: 1
+});
+
+last2track.addTo(mymap);
+
+last3track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'green',
+    weight: 4,
+    opacity: 1.,
+    smoothFactor: 1
+});
+
+last3track.addTo(mymap);
+
+
+for (var i=0;i<xvals.length;i++) {
 
 var lat = latitude[i];
 var lon = longitude[i];
 var signal = parseInt(rssi[i]);
-var node = parseInt(route[i]);
+var relaynode = parseInt(route[i]);
 var fillcol = 'green';
+var thisnode = parseInt(node[i])
 
-console.log(signal);
+console.log('got here',i);
 
-/*
-if(signal>-90) {
-  fillcol='green'
-}
-if((signal<=-90)&&(signal>-110)) {
-  fillcol='yellow'
-}
-      if(signal<-110) {
-  fillcol='red';
-  console.log('low');
-      }
-*/
+//console.log(signal);
 
+fillcol='black';
+
+if(thisnode==2) {
 fillcol='red';
+last2lat=lat;
+last2lon=lon;
 
-if(node==2) {
-  fillcol='green';
+last2marker.remove();
+
+last2marker = L.circle([lat, lon], 7, {
+  color: fillcol,
+  fillColor: 'red', 
+  fillOpacity: .31
+  }).addTo(mymap);
+
+pointA = new L.LatLng(lat, lon);
+
+if(relaynode==1) {
+var pointB = new L.LatLng(last1lat, last1lon);
+}
+if(relaynode==2) {
+var pointB = new L.LatLng(last2lat, last2lon);
+}
+if(relaynode==3) {
+var pointB = new L.LatLng(last3lat, last3lon);
 }
 
-var myColor = 'green';
+var pointList = [pointA, pointB];
 
-/*
-      if (devName.localeCompare('neds_gnat1')) {
-      myColor = 'black';
-      }
-      else if (devName.localeCompare('neds_longcricket1')) {
-      myColor = 'white';      
-      }
-*/
+last2track.remove();
 
-L.circle([lat, lon], 2, {
+last2track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'red',
+    weight: 4,
+    opacity: 1.,
+    smoothFactor: 1
+});
+
+last2track.addTo(mymap);
+
+}
+if(thisnode==3) {
+  fillcol='green'
+  last3lat=lat;
+  last3lon=lon;
+
+  last3marker.remove();
+
+last3marker = L.circle([lat, lon], 7, {
   color: fillcol,
   fillColor: fillcol, 
   fillOpacity: .31
-  }).addTo(mymap).bindPopup("--");
+  }).addTo(mymap);
+
+  pointA = new L.LatLng(lat, lon);
+
+if(relaynode==1) {
+var pointB = new L.LatLng(last1lat, last1lon);
+}
+if(relaynode==2) {
+var pointB = new L.LatLng(last2lat, last2lon);
+}
+if(relaynode==3) {
+var pointB = new L.LatLng(last3lat, last3lon);
+}
+
+var pointList = [pointA, pointB];
+
+last3track.remove();
+
+last3track = new L.Polyline(pointList, {
+    //color: fillcol,
+    color: 'green',
+    weight: 4,
+    opacity: 1.,
+    smoothFactor: 1
+});
+
+last3track.addTo(mymap);
 
 }
 
-L.control.scale().addTo(mymap);
-
-var radius = 1609.344;
-var radius = 100;
-var home_lat = 43.9926;
-var home_lon = -73.1513;
-
-L.circle([home_lat, home_lon], radius, {
-  color: 'black',
-fillColor: 'transparent',
-  //fillColor: fillcol, 
-  fillOpacity: .3,
-weight:1,
-  }).addTo(mymap);
+await timer(animationTimestep);
 
 
-L.circle([home_lat, home_lon], 2*radius, {
-  color: 'black',
-      fillColor: 'transparent',
-  //fillColor: fillcol,
-weight: 1,
-  fillOpacity: .1 
-  }).addTo(mymap);
+}
 
-L.circle([home_lat, home_lon], 3*radius, {
-  color: 'black',
-      fillColor: 'transparent',
-  //fillColor: fillcol,
-      weight: 1,
-  fillOpacity: .1
-  }).addTo(mymap);
+}
 
 
-});
+load();
+
+}
+
+);
 
 	</script>
 
