@@ -1,10 +1,23 @@
+def file_len(fname):
+    with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    return i + 1
+
+filename = "mesh.txt"
+
+numlines=file_len(filename)
+
 f = open("mesh.txt", "r")
 lastroute=0
 lastrssi=0
 linecount=0
 lat='0'
 lon='0'
-print('[')
+
+linecount=0
+
+print('[',end='')
 for x in f:
   #print(x)
   s=x.split("&")
@@ -24,5 +37,13 @@ for x in f:
     lastrssi=node1stats[1].split(':')[1]
     #print(node1stats)
     #print(relaynode,node1rssi)
-    print('{\"time\":\"'+time+'\",\"node\":\"'+node+'\",\"lastroute\":\"'+lastroute+'\",\"lastrssi\":\"'+lastrssi+'\",\"lon\":\"'+lon+'\",\"lat\":\"'+lat+'\"},')
+    if ((float(lat)!=0.0) and (float(lon)!=0.0)):
+        if(linecount!=0):
+            print(',',end='')
+        print('{\"time\":\"'+time+'\",\"node\":\"'+node+'\",\"lastroute\":\"'+lastroute+'\",\"lastrssi\":\"'+lastrssi+'\",\"lon\":\"'+lon+'\",\"lat\":\"'+lat+'\"}',end='')
+        linecount=linecount+1
+        #if (linecount<numlines):
+        #print(',',end='')
+        #print(linecount)
+#linecount=linecount+1
 print(']')
