@@ -11,9 +11,6 @@
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 
-// Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
-
 // Class to manage message delivery and receipt, using the driver declared above
 RHMesh *manager;
 
@@ -25,13 +22,13 @@ typedef struct {
 } Payload;
 Payload theData;
 
-uint8_t buf[sizeof(Payload)];
-uint8_t len = sizeof(buf);
+
+
     
 void setup() {
 
 
-  pinMode(LED, OUTPUT);
+  //pinMode(LED, OUTPUT);
   Serial.begin(115200);
   //while (!Serial) ; // Wait for serial port to be available
 
@@ -100,7 +97,7 @@ void loop() {
     theData.co2 = 400;
     theData.node_id = nodeId;
     //theData.next_hop = route->next_hop;
-    theData.next_hop = 30;
+    theData.next_hop = 1;
     theData.next_hop_rssi = rf95.lastRssi();
     
     // send an acknowledged message to the target node
@@ -129,6 +126,8 @@ void loop() {
     while (nextTransmit > millis()) {
       int waitTime = nextTransmit - millis();
       //uint8_t len = sizeof(buf);
+      uint8_t buf[sizeof(Payload)];
+      uint8_t len = sizeof(buf);
       uint8_t from;
       if (manager->recvfromAckTimeout((uint8_t *)buf, &len, waitTime, &from)) {
         theData = *(Payload*)buf;
