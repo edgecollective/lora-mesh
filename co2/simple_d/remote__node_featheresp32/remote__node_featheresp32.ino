@@ -8,7 +8,6 @@
 #include "config.h"
 
 #define targetNode 1
-//#define RH_TEST_NETWORK 3
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
@@ -24,14 +23,18 @@ typedef struct {
 } Payload;
 Payload theData;
 
-#define RFM95_CS 14
-#define RFM95_RST 27
-#define RFM95_INT 15
+
+#define LORA_IRQ 15
+#define LORA_CS 14
+#define LORA_SCK 26 //A0
+#define LORA_MOSI 21
+#define LORA_MISO 25 //A1
+#define LORA_RST 27
+
 #define LED 13
 
 RHSoftwareSPI sx1278_spi;
-
-RH_RF95 rf95(RFM95_CS, RFM95_INT, sx1278_spi);
+RH_RF95 rf95(LORA_CS, LORA_IRQ, sx1278_spi);
 
     
 void setup() {
@@ -41,10 +44,12 @@ void setup() {
   Serial.begin(115200);
   //while (!Serial) ; // Wait for serial port to be available
 
-  Serial.print("RFM95_CS:");
-  Serial.println(RFM95_CS);
+  //Serial.print("RFM95_CS:");
+  //Serial.println(RFM95_CS);
   
   Serial.print(F("initializing node "));
+
+  sx1278_spi.setPins(LORA_MISO, LORA_MOSI, LORA_SCK);
 
   manager = new RHMesh(rf95, nodeId);
 
