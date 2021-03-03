@@ -336,7 +336,7 @@ void postToBayou(const char * post_pubkey, const char * post_privkey, int node_i
         doc["light"]=light;
         doc["node_id"]=node_id;
         doc["next_hop"]=next_hop;
-        doc["next_rssi"]=0;
+        doc["next_rssi"]=next_rssi;
         doc["log"]=logcode;
          
         String json;
