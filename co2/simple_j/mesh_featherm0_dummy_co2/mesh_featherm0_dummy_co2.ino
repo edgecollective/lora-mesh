@@ -5,24 +5,16 @@
 #include <RH_RF95.h>
 #define RH_HAVE_SERIAL
 #include <SPI.h>
-#include <U8x8lib.h>
 #include <Arduino.h>
-#include <WiFi.h>
-#include <WiFiMulti.h>
-#include <HTTPClient.h>
 #include <ArduinoJson.h> //https://arduinojson.org/v6/doc/installation/
 #include <Bounce2.h> // https://github.com/thomasfredericks/Bounce2
 #include <Wire.h>
-#include "SparkFun_SCD30_Arduino_Library.h"  //  https://github.com/sparkfun/SparkFun_SCD30_Arduino_Library
 #include "config.h"
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 #define gatewayNode 1
 
-SCD30 airSensor;
-
-U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ 15, /* data=*/ 4, /* reset=*/ 16);
 
 // Class to manage message delivery and receipt, using the driver declared above
 RHMesh *manager;
@@ -43,57 +35,30 @@ typedef struct {
 
 Payload theData;
 
-// heltec wifi lora 32 v2
-#define RFM95_CS 18
-#define RFM95_RST 14
-#define RFM95_INT 26
-//#define LED 25
+// Radio pins for feather M0
+#define RFM95_CS 8
+#define RFM95_RST 4
+#define RFM95_INT 3
 
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 int NAcounts=0;
 int NAthreshold = 10;
 boolean connectioWasAlive = true;
 
-WiFiMulti wifiMulti;
-
 long lastMeasureTime = 0;  // the last time the output pin was toggled
 long measureDelay = interval_sec*1000;
 
 void setup() {
-
-  u8x8.begin();
-  
-  u8x8.setFont(u8x8_font_7x14B_1x2_f);
-   u8x8.clear();
-   u8x8.setCursor(0,0); 
-   u8x8.print("Starting...");
-   delay(1000);
    
   Serial.begin(115200);
 
-  Wire.begin();
-
-  if (airSensor.begin() == false)
-  {
-     u8x8.setCursor(0,2); 
-   u8x8.print("SCD30 missing?");
-    Serial.println("Air sensor not detected. Please check wiring. Freezing...");
-    while (1)
-      ;
-  }
-  u8x8.setCursor(0,2); 
-   u8x8.print("SCD30 detected!");
-   delay(1000);
-   
   manager = new RHMesh(rf95, this_node_id);
 
   if (!manager->init()) {
     Serial.println(F("mesh init failed"));
-    u8x8.setCursor(0,4); 
-    u8x8.print("LoRa fail!");
+   
   } else {
-    u8x8.setCursor(0,4); 
-    u8x8.print("LoRa working!");
+   
     delay(1000);
   }
   rf95.setTxPower(23, false);
@@ -124,13 +89,11 @@ void setup() {
 
   if(this_node_id == gatewayNode) // we're the gateway, so try to connect to wifi
   {
-    wifiMulti.addAP(SSID,WiFiPassword);
+    // would connect to wifi here
   }
 
     // warm up CO2 sensor by waiting 2 sec
     //co2 still warming up
-    u8x8.setCursor(0,6); 
-    u8x8.print("Warming up...");
     delay(3000);
 
 }
@@ -171,33 +134,13 @@ void loop() {
 
 if (  ( (millis() - lastMeasureTime) > (measureDelay+epsilon_interval)) || firstLoop) {
 
-if (airSensor.dataAvailable()) {
-
-  co2 = airSensor.getCO2();
+  co2 = random(410,423); // FAKE DATA
 
   if (co2 > 0) {
 
     // send to serial
     Serial.print("co2:");
     Serial.println(co2);
-
-    // send to display
-     u8x8.clear();
-    u8x8.setFont(u8x8_font_inb21_2x4_n);
-    u8x8.setCursor(0,0); 
-    u8x8.print(co2);
-
-    //display our node id
-    u8x8.setFont(u8x8_font_chroma48medium8_r);
-    u8x8.setCursor(0,5);
-    u8x8.print("node #");
-    u8x8.print(this_node_id);
-
-     //display our pubkey
-    //u8x8.setFont(u8x8_font_chroma48medium8_r);
-    u8x8.setFont(u8x8_font_chroma48medium8_r);
-    u8x8.setCursor(0,6);
-    u8x8.print(this_node_pubkey);
 
      //display our loranet_pubkey
     //u8x8.setFont(u8x8_font_chroma48medium8_r);
@@ -206,8 +149,8 @@ if (airSensor.dataAvailable()) {
     
     
   // make rest of measurement
-  temperature = roundf(airSensor.getTemperature()* 100) / 100;
-  humidity = roundf(airSensor.getHumidity()* 100) / 100;
+  temperature = random(25,30); // FAKE DATA
+  humidity = random(50,60); // FAKE DATA
   light = 0; // if we add a light sensor, can make this real
 
   if (this_node_id != gatewayNode) { // if we're a remote node; send our measurements to lora mesh
@@ -216,7 +159,7 @@ if (airSensor.dataAvailable()) {
   }
   else { // then we're the gateway, so post data to Bayou using this node's pubkey and privatekey
 
-    postToBayou(this_node_pubkey,this_node_privkey,this_node_id,this_node_id,0); // we're assigning '0' to the next_rssi here as a convention
+    //postToBayou(this_node_pubkey,this_node_privkey,this_node_id,this_node_id,0); // we're assigning '0' to the next_rssi here as a convention
   }
   
   firstLoop = 0; // we did our thing successfully for the first loop, so we're out of that mode
@@ -224,7 +167,7 @@ if (airSensor.dataAvailable()) {
   epsilon_interval = random(0,random_interval_sec*1000); //create a new randomized interval
     
 } // co2 > 0
-} // airSensor avail
+//} // airSensor avail
 } // measureTime
 
 
@@ -248,12 +191,11 @@ void relayFromMesh(int waitTime) {
     uint8_t len = sizeof(buf);
     uint8_t from;
     if (manager->recvfromAckTimeout((uint8_t *)buf, &len, waitTime, &from)) {  // this runs until we receive some message
-      // entering this block means the message is for us
-
      // the rest of this code only runs if we were the intended recipient; which means we're the gateway
-      theData = *(Payload*)buf;
 
-      
+     
+     
+      theData = *(Payload*)buf;
       Serial.print(from);
       Serial.print(F("->"));
       Serial.print(F(" :"));
@@ -261,126 +203,19 @@ void relayFromMesh(int waitTime) {
       Serial.print(theData.node_id);
       Serial.print("; next_hop = ");
       Serial.println(theData.next_hop);
-      Serial.print("loranet:");
-      Serial.println(theData.loranet_pubkey);
-      
-     if(strcmp(theData.loranet_pubkey, loranet_pubkey) == 0) {
-          Serial.println("loranet match!");
-          u8x8.setFont(u8x8_font_chroma48medium8_r);
-          u8x8.setCursor(10,theData.node_id-1);
-          u8x8.print(theData.node_id);
-          u8x8.print(":");
-          u8x8.print("REC");
-          delay(300);
-          // copy the incoming data to global variables for co2, temperature, humidity, etc
-          temperature = theData.temperature;
-          humidity = theData.humidity;
-          light = theData.light;
-          
-          // post data to the appropriate Bayou feed, with the proper keys
-          postToBayou(theData.pubkey,theData.privkey,theData.node_id,theData.next_hop,theData.next_rssi);
-    } // end if loranet
-    else{
-       Serial.println("no loranet match");
-    }
+
+    // copy the incoming data to global variables for co2, temperature, humidity, etc
+    temperature = theData.temperature;
+    humidity = theData.humidity;
+    light = theData.light;
     
+    // post data to the appropriate Bayou feed, with the proper keys
+    //postToBayou(theData.pubkey,theData.privkey,theData.node_id,theData.next_hop,theData.next_rssi);
+      
     }
 
 }
 
-
-void postToBayou(const char * post_pubkey, const char * post_privkey, int node_id, int next_hop, int next_rssi) {
-
-// Handle wifi ...
-  Serial.print("Connecting to wifi ...");
-      while (wifiMulti.run() != WL_CONNECTED && NAcounts < NAthreshold )
-      {
-      u8x8.setFont(u8x8_font_chroma48medium8_r);
-      u8x8.setCursor(10,2);
-      u8x8.print("wifi?");
-      u8x8.setCursor(10,3);
-      u8x8.print(NAcounts);
-      Serial.print(".");
-      NAcounts ++;
-      delay(2000);
-      }
-      
-      if (wifiMulti.run() != WL_CONNECTED) {
-      u8x8.setCursor(8,3);
-      u8x8.print("RESET");
-      Serial.println("no wifi ... resetting!");
-      delay(500);
-      ESP.restart();
-      }
-
-      // form the URL:
-     
-      char post_url [60];
-      strcpy(post_url, "http://");
-      strcat(post_url,bayou_base_url);
-      strcat(post_url,"/");
-      strcat(post_url,post_pubkey);
-      
-      //Form the JSON:
-        DynamicJsonDocument doc(1024);
-        
-        Serial.println(post_url);
-        
-        doc["private_key"] = post_privkey;
-        doc["co2"] =  co2;
-        doc["tempC"]=temperature;
-        doc["humidity"]=humidity;
-        doc["light"]=light;
-        doc["node_id"]=this_node_id;
-        doc["next_hop"]=this_node_id;
-        doc["next_rssi"]=0;
-        doc["log"]=logcode;
-         
-        String json;
-        serializeJson(doc, json);
-        serializeJson(doc, Serial);
-        Serial.println("\n");
-        
-        // Post online
-
-        HTTPClient http;
-        int httpCode;
-        
-        http.begin(post_url);
-        http.addHeader("Content-Type", "application/json");
-        Serial.print("[HTTP] Connecting ...\n");
-      
-        httpCode = http.POST(json);        
-
-        if(httpCode== HTTP_CODE_OK) {
-          
-            Serial.printf("[HTTP code]: %d\n", httpCode);
-
-            u8x8.setFont(u8x8_font_chroma48medium8_r);
-            u8x8.setCursor(10,node_id-1);
-            u8x8.print(node_id);
-            u8x8.print(":");
-            u8x8.print(httpCode);
-            
-        } else {
-            Serial.println(httpCode);
-            Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-            u8x8.setFont(u8x8_font_chroma48medium8_r);
-            u8x8.setCursor(10,node_id-1);
-            u8x8.print(node_id);
-            u8x8.print(":");
-            u8x8.print(httpCode);
-           //u8x8.print(http.errorToString(httpCode).c_str());
-            u8x8.setCursor(8,3);
-            u8x8.print("RESET");
-            Serial.println("resetting!");
-            delay(5000);
-            ESP.restart();
-       }
-
-        http.end();
-        
-}
 
 
 void sendToMesh() {
@@ -415,24 +250,12 @@ void sendToMesh() {
       Serial.print(F(" ! "));
       Serial.println(getErrorString(error));
 
-      u8x8.setFont(u8x8_font_chroma48medium8_r);
-     u8x8.setCursor(8,0);
-      u8x8.print("no route");
       //u8x8.setCursor(0,4);
       //u8x8.print(getErrorString(error));
           
     } else {
 
-          u8x8.setFont(u8x8_font_chroma48medium8_r);
-          u8x8.setCursor(9,0);
-          u8x8.print("hop:");
-          u8x8.setCursor(9,1);
-          u8x8.print("#");
-          u8x8.print(theData.next_hop);
-         u8x8.setCursor(9,2);
-          u8x8.print("rssi");
-          u8x8.setCursor(9,3);
-          u8x8.print(theData.next_rssi);
+         
     
           Serial.println(F("OK"));
     }
