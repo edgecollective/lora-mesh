@@ -334,8 +334,8 @@ void postToBayou(const char * post_pubkey, const char * post_privkey, int node_i
         doc["tempC"]=temperature;
         doc["humidity"]=humidity;
         doc["light"]=light;
-        doc["node_id"]=this_node_id;
-        doc["next_hop"]=this_node_id;
+        doc["node_id"]=node_id;
+        doc["next_hop"]=next_hop;
         doc["next_rssi"]=0;
         doc["log"]=logcode;
          
@@ -427,6 +427,8 @@ void sendToMesh() {
     } else {
 
           u8x8.setFont(u8x8_font_chroma48medium8_r);
+          u8x8.setCursor(4,1);
+          u8x8.print("        ");
           u8x8.setCursor(9,2);
           u8x8.print("hop:");
           u8x8.setCursor(9,3);
