@@ -160,11 +160,16 @@ float temperature;
 float humidity;
 float light;
 
+// create a first random interval
+int epsilon_interval = random(0,random_interval_sec*1000);
 
 
 void loop() {
 
-if (  ( (millis() - lastMeasureTime) > measureDelay) || firstLoop) {
+// on the first loop, or at a regular (but slightly randomized) interval, make a measurement
+// if we're the gateway, post it to Bayou; if we're a remote node, send it to the lora network
+
+if (  ( (millis() - lastMeasureTime) > (measureDelay+epsilon_interval)) || firstLoop) {
 
 if (airSensor.dataAvailable()) {
 
@@ -172,42 +177,73 @@ if (airSensor.dataAvailable()) {
 
   if (co2 > 0) {
 
-    Serial.print("measureDelay:");
-    Serial.println(measureDelay);
+    // send to serial
     Serial.print("co2:");
     Serial.println(co2);
-    
+
+    // send to display
      u8x8.clear();
     u8x8.setFont(u8x8_font_inb21_2x4_n);
     u8x8.setCursor(0,0); 
     u8x8.print(co2);
+
+    //display our node id
+    u8x8.setFont(u8x8_font_chroma48medium8_r);
+    u8x8.setCursor(0,5);
+    u8x8.print("node #");
+    u8x8.print(this_node_id);
+
+     //display our pubkey
+    //u8x8.setFont(u8x8_font_chroma48medium8_r);
+    u8x8.setFont(u8x8_font_chroma48medium8_r);
+    u8x8.setCursor(0,6);
+    u8x8.print(this_node_pubkey);
+
+     //display our loranet_pubkey
+    //u8x8.setFont(u8x8_font_chroma48medium8_r);
+    //u8x8.setCursor(0,7);
+    //u8x8.print(this_node_pubkey);
+    
     
   // make rest of measurement
   temperature = roundf(airSensor.getTemperature()* 100) / 100;
   humidity = roundf(airSensor.getHumidity()* 100) / 100;
   light = 0; // if we add a light sensor, can make this real
-  
-  if (this_node_id != gatewayNode) { // send to lora mesh if we're a remote node
+
+  if (this_node_id != gatewayNode) { // if we're a remote node; send our measurements to lora mesh
+    
     sendToMesh();
   }
-  else { // we're the gateway, so post data to Bayou using this node's pubkey and privatekey
-    postToBayou(this_node_pubkey,this_node_privkey);
+  else { // then we're the gateway, so post data to Bayou using this node's pubkey and privatekey
+
+    postToBayou(this_node_pubkey,this_node_privkey,this_node_id,this_node_id,0); // we're assigning '0' to the next_rssi here as a convention
   }
   
-  firstLoop = 0;
-  lastMeasureTime = millis(); //set the current time
+  firstLoop = 0; // we did our thing successfully for the first loop, so we're out of that mode
+  lastMeasureTime = millis(); // reset the interval timer 
+  epsilon_interval = random(0,random_interval_sec*1000); //create a new randomized interval
     
 } // co2 > 0
 } // airSensor avail
 } // measureTime
+
+
+//otherwise in the loop, we should be listening for and processing messages from the lora mesh
+// this is blocking code; but basically run whenever we're *not* measuring
+// trying to do this by coordinating the 'epsilon_interval' variable, not sure yet if it's working ...
+
+int listenTime = measureDelay+epsilon_interval;
+relayFromMesh(listenTime);
+
 } // loop
 
-void relayMesh(int waitTime) {
+
+void relayFromMesh(int waitTime) {
 
 // run for waitTime millis, listening for and relaying mesh messages
 // if the intended recipient is us, we're the gateway, and we should post the incoming packet data to Bayou
 
-    waitTime = measureDelay + random(3000, 5000);
+    
     uint8_t buf[sizeof(Payload)];
     uint8_t len = sizeof(buf);
     uint8_t from;
@@ -224,72 +260,44 @@ void relayMesh(int waitTime) {
       Serial.print("; next_hop = ");
       Serial.println(theData.next_hop);
 
-    // this is where we would post online
-
-    // copy the incoming data to co2, temperature, humidity, etc
+    u8x8.setFont(u8x8_font_chroma48medium8_r);
+    u8x8.setCursor(10,theData.node_id-1);
+    u8x8.print(theData.node_id);
+    u8x8.print(":");
+    u8x8.print("REC");
+    delay(300);
+    // copy the incoming data to global variables for co2, temperature, humidity, etc
+    temperature = theData.temperature;
+    humidity = theData.humidity;
+    light = theData.light;
+    
     // post data to the appropriate Bayou feed, with the proper keys
-    postToBayou(theData.pubkey,theData.privkey);
+    postToBayou(theData.pubkey,theData.privkey,theData.node_id,theData.next_hop,theData.next_rssi);
       
     }
 
 }
 
 
-
-void sendToMesh() {
-  // we are a remote node, and: it's time to measure, or we're in the first loop
-
-    Serial.println(co2);
-
-    theData.co2 = co2;
-    theData.temperature = temperature;
-    theData.humidity = humidity;
-    theData.light = light;
-    memcpy(theData.loranet_pubkey,loranet_pubkey,13);
-    memcpy(theData.pubkey,this_node_pubkey,13);
-    memcpy(theData.privkey,this_node_privkey,13);
-    theData.node_id = this_node_id;
-    theData.next_rssi = rf95.lastRssi();
-    theData.logcode = logcode;
-    RHRouter::RoutingTableEntry *route = manager->getRouteTo(gatewayNode);
-    if (route != NULL) {
-    theData.next_hop = route->next_hop;
-    }
-    else
-    {
-    theData.next_hop = 0; // consider this an 'error' message of sorts
-    }
-    
-    // send an acknowledged message to the target node
-    uint8_t error = manager->sendtoWait((uint8_t *)&theData, sizeof(theData), gatewayNode);
-    if (error != RH_ROUTER_ERROR_NONE) {
-      Serial.println();
-      Serial.print(F(" ! "));
-      Serial.println(getErrorString(error));
-    } else {
-      Serial.println(F("OK"));
-    }
-    
-}
-void postToBayou(const char * post_pubkey, const char * post_privkey) {
+void postToBayou(const char * post_pubkey, const char * post_privkey, int node_id, int next_hop, int next_rssi) {
 
 // Handle wifi ...
   Serial.print("Connecting to wifi ...");
       while (wifiMulti.run() != WL_CONNECTED && NAcounts < NAthreshold )
       {
-//      u8x8.setFont(u8x8_font_chroma48medium8_r);
-//      u8x8.setCursor(10,2);
-//      u8x8.print("wifi?");
-//      u8x8.setCursor(10,3);
-//      u8x8.print(NAcounts);
+      u8x8.setFont(u8x8_font_chroma48medium8_r);
+      u8x8.setCursor(10,2);
+      u8x8.print("wifi?");
+      u8x8.setCursor(10,3);
+      u8x8.print(NAcounts);
       Serial.print(".");
       NAcounts ++;
       delay(2000);
       }
       
       if (wifiMulti.run() != WL_CONNECTED) {
-//      u8x8.setCursor(8,3);
-//      u8x8.print("RESET");
+      u8x8.setCursor(8,3);
+      u8x8.print("RESET");
       Serial.println("no wifi ... resetting!");
       delay(500);
       ESP.restart();
@@ -338,26 +346,84 @@ void postToBayou(const char * post_pubkey, const char * post_privkey) {
           
             Serial.printf("[HTTP code]: %d\n", httpCode);
 
-            //u8x8.setFont(u8x8_font_7x14B_1x2_f);
-//            u8x8.setFont(u8x8_font_chroma48medium8_r);
-//            u8x8.setCursor(10,2);
-//            u8x8.print(httpCode);
+            u8x8.setFont(u8x8_font_chroma48medium8_r);
+            u8x8.setCursor(10,node_id-1);
+            u8x8.print(node_id);
+            u8x8.print(":");
+            u8x8.print(httpCode);
             
         } else {
             Serial.println(httpCode);
             Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-            //u8x8.setFont(u8x8_font_7x14B_1x2_f);
-//            u8x8.setFont(u8x8_font_chroma48medium8_r);
-//              u8x8.setCursor(10,2);
-//              u8x8.print(httpCode);
-//              //u8x8.print(http.errorToString(httpCode).c_str());
-//              u8x8.setCursor(8,3);
-//              u8x8.print("RESET");
-            Serial.print("resetting!");
+            u8x8.setFont(u8x8_font_chroma48medium8_r);
+            u8x8.setCursor(10,node_id-1);
+            u8x8.print(node_id);
+            u8x8.print(":");
+            u8x8.print(httpCode);
+           //u8x8.print(http.errorToString(httpCode).c_str());
+            u8x8.setCursor(8,3);
+            u8x8.print("RESET");
+            Serial.println("resetting!");
             delay(5000);
             ESP.restart();
        }
 
         http.end();
         
+}
+
+
+void sendToMesh() {
+  // we are a remote node, and: it's time to measure, or we're in the first loop
+
+    Serial.println(co2);
+
+    theData.co2 = co2;
+    theData.temperature = temperature;
+    theData.humidity = humidity;
+    theData.light = light;
+    memcpy(theData.loranet_pubkey,loranet_pubkey,13);
+    memcpy(theData.pubkey,this_node_pubkey,13);
+    memcpy(theData.privkey,this_node_privkey,13);
+    theData.node_id = this_node_id;
+    theData.next_rssi = rf95.lastRssi();
+    theData.logcode = logcode;
+    RHRouter::RoutingTableEntry *route = manager->getRouteTo(gatewayNode);
+    if (route != NULL) {
+    theData.next_hop = route->next_hop;
+    }
+    else
+    {
+    theData.next_hop = 0; // consider this an 'error' message of sorts
+    }
+    
+    
+    // send an acknowledged message to the target node
+    uint8_t error = manager->sendtoWait((uint8_t *)&theData, sizeof(theData), gatewayNode);
+    if (error != RH_ROUTER_ERROR_NONE) {
+      Serial.println();
+      Serial.print(F(" ! "));
+      Serial.println(getErrorString(error));
+
+      u8x8.setFont(u8x8_font_chroma48medium8_r);
+     u8x8.setCursor(8,0);
+      u8x8.print("no route");
+      u8x8.setCursor(0,4);
+      u8x8.print(getErrorString(error));
+          
+    } else {
+
+          u8x8.setFont(u8x8_font_chroma48medium8_r);
+          u8x8.setCursor(9,0);
+          u8x8.print("hop:");
+          u8x8.setCursor(9,1);
+          u8x8.print(theData.next_hop);
+         u8x8.setCursor(9,2);
+          u8x8.print("rssi");
+          u8x8.setCursor(9,3);
+          u8x8.print(theData.next_rssi);
+    
+          Serial.println(F("OK"));
+    }
+    
 }
