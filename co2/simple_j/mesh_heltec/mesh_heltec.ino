@@ -132,7 +132,7 @@ void setup() {
     u8x8.setCursor(0,6); 
     u8x8.print("Warming up...");
     delay(3000);
-
+    u8x8.clear();
 }
 
 const __FlashStringHelper* getErrorString(uint8_t error) {
@@ -182,21 +182,22 @@ if (airSensor.dataAvailable()) {
     Serial.println(co2);
 
     // send to display
-     u8x8.clear();
     u8x8.setFont(u8x8_font_inb21_2x4_n);
-    u8x8.setCursor(0,0); 
+    u8x8.setCursor(0,2);
+    u8x8.print("    "); 
+    u8x8.setCursor(0,2);
     u8x8.print(co2);
 
     //display our node id
     u8x8.setFont(u8x8_font_chroma48medium8_r);
-    u8x8.setCursor(0,5);
+    u8x8.setCursor(0,6);
     u8x8.print("node #");
     u8x8.print(this_node_id);
 
      //display our pubkey
     //u8x8.setFont(u8x8_font_chroma48medium8_r);
     u8x8.setFont(u8x8_font_chroma48medium8_r);
-    u8x8.setCursor(0,6);
+    u8x8.setCursor(0,0);
     u8x8.print(this_node_pubkey);
 
      //display our loranet_pubkey
@@ -267,11 +268,11 @@ void relayFromMesh(int waitTime) {
      if(strcmp(theData.loranet_pubkey, loranet_pubkey) == 0) {
           Serial.println("loranet match!");
           u8x8.setFont(u8x8_font_chroma48medium8_r);
-          u8x8.setCursor(10,theData.node_id-1);
+          u8x8.setCursor(10,theData.node_id+1);
           u8x8.print(theData.node_id);
           u8x8.print(":");
           u8x8.print("REC");
-          delay(300);
+          //delay(100);
           // copy the incoming data to global variables for co2, temperature, humidity, etc
           temperature = theData.temperature;
           humidity = theData.humidity;
@@ -357,7 +358,7 @@ void postToBayou(const char * post_pubkey, const char * post_privkey, int node_i
             Serial.printf("[HTTP code]: %d\n", httpCode);
 
             u8x8.setFont(u8x8_font_chroma48medium8_r);
-            u8x8.setCursor(10,node_id-1);
+            u8x8.setCursor(10,node_id+1);
             u8x8.print(node_id);
             u8x8.print(":");
             u8x8.print(httpCode);
@@ -366,7 +367,7 @@ void postToBayou(const char * post_pubkey, const char * post_privkey, int node_i
             Serial.println(httpCode);
             Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
             u8x8.setFont(u8x8_font_chroma48medium8_r);
-            u8x8.setCursor(10,node_id-1);
+            u8x8.setCursor(10,node_id+1);
             u8x8.print(node_id);
             u8x8.print(":");
             u8x8.print(httpCode);
@@ -429,7 +430,7 @@ void sendToMesh() {
           u8x8.setCursor(9,1);
           u8x8.print("#");
           u8x8.print(theData.next_hop);
-         u8x8.setCursor(9,2);
+          u8x8.setCursor(9,2);
           u8x8.print("rssi");
           u8x8.setCursor(9,3);
           u8x8.print(theData.next_rssi);
